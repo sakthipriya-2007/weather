@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skyglass - Live Atmospheric Data</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #0a0e1a 0%, #0d1b2a 50%, #0a0e1a 100%);
+    color: #e6edf3;
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+  .container { max-width: 720px; margin: 0 auto; }
+
+  .logo {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .logo .accent { color: #4da3ff; font-weight: 800; }
+  .tagline {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #6b7a90;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .search-bar input {
+    flex: 1;
+    background: #131c2e;
+    border: 1px solid #243349;
+    border-radius: 8px;
+    padding: 12px 14px;
+    color: #e6edf3;
+    font-size: 15px;
+    outline: none;
+  }
+  .search-bar input:focus { border-color: #4da3ff; }
+  .search-bar button {
+    background: #2563eb;
+    border: none;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .search-bar button:hover { background: #1d4ed8; }
+  .search-bar button:disabled { opacity: 0.6; cursor: default; }
+
+  .city-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .chip {
+    background: #131c2e;
+    border: 1px solid #243349;
+    color: #9fb3c8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover, .chip.active {
+    border-color: #4da3ff;
+    color: #4da3ff;
+    background: rgba(77,163,255,0.08);
+  }
+
+  .location-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .location-header h1 { font-size: 24px; font-weight: 700; }
+  .location-header .sub {
+    font-size: 12px;
+    color: #6b7a90;
+    margin-top: 2px;
+    line-height: 1.6;
+  }
+  .location-header .time {
+    text-align: right;
+    font-size: 12px;
+    color: #6b7a90;
+    line-height: 1.6;
+  }
+
+  .main-card {
+    background: #131c2e;
+    border: 1px solid #243349;
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .temp { display: flex; align-items: flex-start; }
+  .temp .value {
+    font-size: 64px;
+    font-weight: 800;
+    color: #f5a623;
+    line-height: 1;
+  }
+  .temp .unit {
+    font-size: 28px;
+    font-weight: 700;
+    color: #f5a623;
+    margin-top: 6px;
+  }
+  .condition { text-align: right; }
+  .condition .icon { font-size: 40px; }
+  .condition .desc { font-size: 16px; font-weight: 600; margin-top: 4px; }
+  .condition .feels { font-size: 12px; color: #6b7a90; margin-top: 2px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .metric-card {
+    background: #131c2e;
+    border: 1px solid #243349;
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .metric-card .label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #6b7a90;
+    margin-bottom: 8px;
+  }
+  .metric-card .label::before { content: "● "; color: #4da3ff; }
+  .metric-card .value {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .metric-card .value .small { font-size: 12px; font-weight: 400; color: #6b7a90; }
+
+  .progress {
+    height: 4px;
+    background: #243349;
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: #4da3ff; border-radius: 2px; }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: #4a5568;
+    margin-top: 20px;
+  }
+
+  .state-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7a90;
+    font-size: 14px;
+  }
+  .state-message.error { color: #f87171; }
+
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .temp .value { font-size: 48px; }
+    .temp .unit { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">Sky<span class="accent">glass</span></div>
+  <div class="tagline">Live Atmospheric Data</div>
+
+  <div class="search-bar">
+    <input type="text" id="cityInput" placeholder="Enter city name..." />
+    <button id="searchBtn">Search</button>
+  </div>
+
+  <div class="city-chips" id="cityChips"></div>
+
+  <div id="content">
+    <div class="state-message" id="stateMessage">Loading weather data...</div>
+  </div>
+
+  <div class="footer">
+    Data via Open-Meteo API (open-meteo.com) · No API key required · Updated hourly
+  </div>
+</div>
+
+<script>
+const PRESET_CITIES = ["New York", "London", "Tokyo", "Sydney", "Paris", "Dubai", "Toronto"];
+
+const cityInput = document.getElementById('cityInput');
+const searchBtn = document.getElementById('searchBtn');
+const cityChips = document.getElementById('cityChips');
+const content = document.getElementById('content');
+
+let activeCity = "New York";
+
+// ---- Weather code -> description & icon mapping ----
+const WEATHER_CODES = {
+  0:  { desc: "Clear Sky",        icon: "☀️" },
+  1:  { desc: "Mainly Clear",     icon: "🌤️" },
+  2:  { desc: "Partly Cloudy",    icon: "⛅" },
+  3:  { desc: "Overcast",         icon: "☁️" },
+  45: { desc: "Fog",              icon: "🌫️" },
+  48: { desc: "Icy Fog",          icon: "🌫️" },
+  51: { desc: "Light Drizzle",    icon: "🌦️" },
+  53: { desc: "Drizzle",          icon: "🌦️" },
+  55: { desc: "Heavy Drizzle",    icon: "🌧️" },
+  61: { desc: "Light Rain",       icon: "🌧️" },
+  63: { desc: "Rain",             icon: "🌧️" },
+  65: { desc: "Heavy Rain",       icon: "🌧️" },
+  71: { desc: "Light Snow",       icon: "🌨️" },
+  73: { desc: "Snow",             icon: "🌨️" },
+  75: { desc: "Heavy Snow",       icon: "❄️" },
+  80: { desc: "Rain Showers",     icon: "🌦️" },
+  81: { desc: "Rain Showers",     icon: "🌧️" },
+  82: { desc: "Violent Showers",  icon: "⛈️" },
+  95: { desc: "Thunderstorm",     icon: "⛈️" },
+  96: { desc: "Thunderstorm",     icon: "⛈️" },
+  99: { desc: "Severe Thunderstorm", icon: "⛈️" }
+};
+
+function getWeatherInfo(code) {
+  return WEATHER_CODES[code] || { desc: "Unknown", icon: "🌡️" };
+}
+
+function compassDirection(deg) {
+  const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+// ---- Render the chips ----
+function renderChips() {
+  cityChips.innerHTML = "";
+  PRESET_CITIES.forEach(city => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (city === activeCity ? ' active' : '');
+    chip.textContent = city;
+    chip.addEventListener('click', () => {
+      activeCity = city;
+      cityInput.value = "";
+      renderChips();
+      loadWeather(city);
+    });
+    cityChips.appendChild(chip);
+  });
+}
+
+// ---- Step 1: Geocode city name to lat/lon ----
+async function geocodeCity(city) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Geocoding request failed (${res.status})`);
+  const data = await res.json();
+  if (!data.results || data.results.length === 0) {
+    throw new Error(`No location found for "${city}"`);
+  }
+  const result = data.results[0];
+  return {
+    name: result.name,
+    country: result.country,
+    admin1: result.admin1,
+    latitude: result.latitude,
+    longitude: result.longitude,
+    timezone: result.timezone
+  };
+}
+
+// ---- Step 2: Fetch current weather for lat/lon ----
+async function fetchWeather(lat, lon, timezone) {
+  const params = new URLSearchParams({
+    latitude: lat,
+    longitude: lon,
+    current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure",
+    daily: "visibility_max",
+    timezone: timezone || "auto"
+  });
+  const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Weather request failed (${res.status})`);
+  return res.json();
+}
+
+// ---- Render loading / error states ----
+function renderState(message, isError = false) {
+  content.innerHTML = `<div class="state-message${isError ? ' error' : ''}">${message}</div>`;
+}
+
+// ---- Render the weather dashboard ----
+function renderWeather(location, weather) {
+  const current = weather.current;
+  const weatherInfo = getWeatherInfo(current.weather_code);
+
+  const localTime = new Date(current.time);
+  const timeStr = localTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const dateStr = localTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+  // Visibility: convert meters to km (daily max as approximation)
+  let visibilityKm = "N/A";
+  if (weather.daily && weather.daily.visibility_max && weather.daily.visibility_max[0] != null) {
+    visibilityKm = (weather.daily.visibility_max[0] / 1000).toFixed(1);
+  }
+
+  const humidity = current.relative_humidity_2m;
+  const windSpeed = current.wind_speed_10m;
+  const windDir = current.wind_direction_10m;
+  const pressure = Math.round(current.surface_pressure);
+  const precipitation = current.precipitation.toFixed(1);
+
+  content.innerHTML = `
+    <div class="location-header">
+      <div>
+        <h1>${location.name}</h1>
+        <div class="sub">
+          ${[location.admin1, location.country].filter(Boolean).join(', ')}<br>
+          ${location.latitude.toFixed(4)}°N, ${location.longitude.toFixed(4)}°E
+        </div>
+      </div>
+      <div class="time">
+        Local time<br>
+        <strong>${timeStr}</strong><br>
+        ${dateStr}
+      </div>
+    </div>
+
+    <div class="main-card">
+      <div class="temp">
+        <span class="value">${Math.round(current.temperature_2m)}</span>
+        <span class="unit">°C</span>
+      </div>
+      <div class="condition">
+        <div class="icon">${weatherInfo.icon}</div>
+        <div class="desc">${weatherInfo.desc}</div>
+        <div class="feels">Feels like ${Math.round(current.apparent_temperature)}°C</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="metric-card">
+        <div class="label">Humidity</div>
+        <div class="value">${humidity}<span class="small">%</span></div>
+        <div class="progress"><div class="progress-fill" style="width:${humidity}%"></div></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Wind Speed</div>
+        <div class="value">${windSpeed}<span class="small"> km/h</span></div>
+        <div class="small" style="margin-top:8px;">→ ${windDir}° (${compassDirection(windDir)})</div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Pressure</div>
+        <div class="value">${pressure}<span class="small"> hPa</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Precipitation</div>
+        <div class="value">${precipitation}<span class="small"> mm</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="metric-card">
+        <div class="label">Visibility</div>
+        <div class="value">${visibilityKm}<span class="small"> km</span></div>
+      </div>
+      <div class="metric-card">
+        <div class="label">Coordinates</div>
+        <div class="value" style="font-size:14px;">${location.latitude.toFixed(4)}° N, ${location.longitude.toFixed(4)}° E</div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- Main load function: orchestrates geocode + weather fetch ----
+async function loadWeather(city) {
+  renderState(`Loading weather for "${city}"...`);
+  searchBtn.disabled = true;
+
+  try {
+    const location = await geocodeCity(city);
+    const weather = await fetchWeather(location.latitude, location.longitude, location.timezone);
+    renderWeather(location, weather);
+  } catch (err) {
+    console.error(err);
+    renderState(
+      `Couldn't load weather data: ${err.message}. Please check your connection or try a different city.`,
+      true
+    );
+  } finally {
+    searchBtn.disabled = false;
+  }
+}
+
+// ---- Event listeners ----
+searchBtn.addEventListener('click', () => {
+  const value = cityInput.value.trim();
+  if (!value) return;
+  activeCity = value;
+  renderChips();
+  loadWeather(value);
+});
+
+cityInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') searchBtn.click();
+});
+
+// ---- Init ----
+renderChips();
+loadWeather(activeCity);
+</script>
+</body>
+</html>
